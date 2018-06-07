@@ -8,6 +8,8 @@
 #ifndef ARGS_H_
 #define ARGS_H_
 
+#include <stdbool.h>
+
 struct args {
 
 	char *in; /* input file */
@@ -18,8 +20,8 @@ struct args {
 
 };
 
-void get_args(int argc, char *argv[], struct args *a);
+bool get_args(int argc, char *argv[], struct args *a);
+
 void print_args(struct args *a);
-//void print_cap();
 
 #endif /* ARGS_H_ */
