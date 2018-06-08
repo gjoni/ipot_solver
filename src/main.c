@@ -25,8 +25,17 @@ int main(int argc, char *argv[]) {
 	struct graph g;
 	graph_read(myargs.in, &g);
 
+	double f;
+	double *x = (double*) calloc((g.dim * (g.dim + 1)), sizeof(double));
+	double *dx = (double*) calloc((g.dim * (g.dim + 1)), sizeof(double));
+	fdf(&g, x, &f, dx);
+
+	printf("F= %f\n", f);
+
 	/* (9) free */
 	graph_free(&g);
+	free(x);
+	free(dx);
 
 	return 0;
 

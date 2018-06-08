@@ -1,7 +1,7 @@
 
 C=gcc
 CFLAGS += -Wall -Wno-unused-result -pedantic -Ofast -march=native -std=c99 -g -ggdb -fopenmp
-CLIBS =
+CLIBS = -lm
 INCDIRS = -I./src
 LIBDIRS =
 

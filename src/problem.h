@@ -11,6 +11,16 @@
 #include "graph.h"
 #include "lbfgs.h"
 
+struct problem {
+	struct graph *g;
+	double *h;
+	double *J;
+	double T;
+};
+
+void problem_create(struct problem *P, struct graph *G);
+void problem_free(struct problem *P);
+
 void fdf(struct graph *G, const double *x, double *f, double *g);
 
 lbfgsfloatval_t _evaluate(void *instance, const lbfgsfloatval_t *x,
