@@ -15,7 +15,7 @@
 bool get_args(int argc, char *argv[], struct args *myargs) {
 
 	char tmp;
-	while ((tmp = getopt(argc, argv, "hi:o:c:t:T:")) != -1) {
+	while ((tmp = getopt(argc, argv, "hi:o:c:t:T:n:")) != -1) {
 		switch (tmp) {
 		case 'h': /* help */
 			printf("!!! HELP !!!\n");
@@ -35,6 +35,9 @@ bool get_args(int argc, char *argv[], struct args *myargs) {
 			break;
 		case 'T': /* learning temperature */
 			myargs->temp = atof(optarg);
+			break;
+		case 'n': /* number of iterations */
+			myargs->niter = atoi(optarg);
 			break;
 		default:
 			return false;
@@ -58,6 +61,7 @@ void print_args(struct args *myargs) {
 	printf("          -o output.txt                  - output, optional\n");
 	printf("          -c checkpoint.txt              - output, optional\n");
 	printf("          -T learning temperature          %.2f\n", myargs->temp);
+	printf("          -n number of iterations          %d\n", myargs->niter);
 	printf("          -t number of threads             %d\n", myargs->nthreads);
 	printf("\n");
 

@@ -16,6 +16,7 @@ struct args {
 	char *chk; /* checkpoint file */
 	char *out; /* output file */
 	double temp; /* learning temperature */
+	int niter; /* number of iterations */
 	int nthreads; /* number of threads */
 
 };
