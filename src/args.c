@@ -59,7 +59,7 @@ void print_args(struct args *myargs) {
 	printf("\nUsage:   ./ipot_solver [-option] [argument]\n\n");
 	printf("Options:  -i input.txt                   - input, required\n");
 	printf("          -o output.txt                  - output, optional\n");
-	printf("          -c checkpoint.txt              - output, optional\n");
+	printf("          -c checkpoint.txt              - input/output, optional\n");
 	printf("          -T learning temperature          %.2f\n", myargs->temp);
 	printf("          -n number of iterations          %d\n", myargs->niter);
 	printf("          -t number of threads             %d\n", myargs->nthreads);

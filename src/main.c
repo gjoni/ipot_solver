@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 
 #if defined(_OPENMP)
 	omp_set_num_threads(myargs.nthreads);
-	printf("# nthreads : %d\n", omp_get_max_threads());
+	printf("# %20s : %d\n", "num of threads", omp_get_max_threads());
 #endif
 
 	/* (1) read input graph */
@@ -39,11 +39,11 @@ int main(int argc, char *argv[]) {
 
 	/* (3) read checkpoint, if any */
 	if (myargs.chk != NULL) {
-
+		checkpoint_read(&P, myargs.chk);
 	}
 
 	/* (4) minimize */
-	minimize(&P, myargs.niter);
+	minimize(&P, myargs.niter, myargs.chk);
 
 	/* (9) free */
 	problem_free(&P);

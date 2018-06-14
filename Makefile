@@ -1,6 +1,6 @@
 
 C=gcc
-CFLAGS += -Wall -Wno-unused-result -pedantic -Ofast -march=native -std=c99 -g -ggdb -fopenmp
+CFLAGS += -Wall -Wno-unused-result -pedantic -O3 -mtune=native -std=c99 -g -ggdb -fopenmp
 CLIBS = -lm
 INCDIRS = -I./src
 LIBDIRS =

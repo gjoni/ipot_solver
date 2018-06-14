@@ -10,15 +10,7 @@
 #include <string.h>
 
 #include "graph.h"
-
-void check_malloc(void *ptr) {
-
-	if (ptr == NULL) {
-		fprintf(stderr, "Error: cannot allocate memory to store the graph\n");
-		exit(1);
-	}
-
-}
+#include "common.h"
 
 void graph_create(struct graph *g, long nnodes, unsigned char dim) {
 
@@ -26,14 +18,14 @@ void graph_create(struct graph *g, long nnodes, unsigned char dim) {
 	g->dim = dim;
 
 	g->type = (unsigned char*) malloc(g->nnodes * sizeof(unsigned char));
-	check_malloc(g->type);
+	check_malloc(g->type, "cannot allocate g->type");
 
 	g->neigh = (unsigned char**) malloc(g->nnodes * sizeof(unsigned char*));
-	check_malloc(g->neigh);
+	check_malloc(g->neigh, "cannot allocate g->neigh");
 
 	for (long i = 0; i < g->nnodes; i++) {
 		g->neigh[i] = (unsigned char*) malloc(g->dim * sizeof(unsigned char));
-		check_malloc(g->neigh[i]);
+		check_malloc(g->neigh[i], "cannot allocate g->neigh");
 	}
 
 }
@@ -106,8 +98,11 @@ void graph_read(char *name, struct graph *g) {
 		}
 	}
 
-	printf("# ntypes x nnodes : %d x %ld\n", dim, nnodes);
-	printf("# memory : %.1fkb\n", 1.0 * (dim + 1) * nnodes / 1024.0);
+	printf("# %20s : %d x %ld\n", "ntypes x nnodes", dim, nnodes);
+	printf("# %20s : %.1fmb\n", "graph size",
+			1.0 * (dim + 1) * nnodes / 1024.0 / 1024.0);
+	printf("# %20s : %.1fmb\n", "temp variables size",
+			8.0 * (dim + 1) * nnodes / 1024.0 / 1024.0);
 
 	fclose(F);
 

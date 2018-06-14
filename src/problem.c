@@ -9,8 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 
 #include "problem.h"
+#include "common.h"
 
 double E(unsigned char *neigh, unsigned char dim, const double *x, double *e) {
 
@@ -38,10 +40,11 @@ double E(unsigned char *neigh, unsigned char dim, const double *x, double *e) {
 
 }
 
-double f(struct graph *G, const double *x) {
+double f(struct problem *P, const double *x) {
 
 	double lp = 0.0;
 
+	struct graph *G = P->G;
 	unsigned char DIM = G->dim;
 
 #if defined(_OPENMP)
@@ -60,35 +63,47 @@ double f(struct graph *G, const double *x) {
 
 }
 
-void fdf(struct graph *G, const double *x, double *f, double *g) {
+void fdf(struct problem *P, const double *x, double *f, double *g) {
 
 	double lp = 0.0;
 
+	struct graph *G = P->G;
 	unsigned char DIM = G->dim;
 
 	memset(g, 0, (DIM + 1) * DIM * sizeof(double));
 
+	/* pre-compute local energies for every node */
+//	 reduction(+:g[:DIM])
+#if defined(_OPENMP)
+#pragma omp parallel for reduction(+:lp) reduction(+:g[:DIM])
+#endif
 	for (long i = 0; i < G->nnodes; i++) {
 
-		double z, e[DIM];
-
-		z = E(G->neigh[i], DIM, x, e);
-		lp += -log(e[G->type[i]] * z);
+		double *e = P->e + i * DIM;
+		P->z[i] = E(G->neigh[i], DIM, x, e);
+		lp += -log(e[G->type[i]] * P->z[i]);
 
 		for (unsigned char a = 0; a < DIM; a++) {
-			e[a] = -e[a] * z + 1.0 * (G->type[i] == a);
-		}
+			e[a] = -e[a] * P->z[i] + 1.0 * (G->type[i] == a);
 
-		/* local fields */
-		for (unsigned char a = 0; a < DIM; a++) {
+			/* derivatives of local fields */
 			g[a] += e[a];
 		}
 
-		/* couplings */
-		double *gptr = g + DIM;
+	}
+
+	/* derivatives of couplings */
+//	int SIZE = DIM + DIM * DIM;
+//#if defined(_OPENMP)
+//#pragma omp parallel for reduction(+:g[:SIZE])
+//#endif
+	for (long i = 0; i < G->nnodes; i++) {
+
+		double *e = P->e + i * DIM;
+
 		for (unsigned char a = 0; a < DIM; a++) {
 			for (unsigned char b = 0; b < DIM; b++) {
-				*(gptr++) += e[a] * G->neigh[i][b];
+				g[DIM * (a + 1) + b] += e[a] * G->neigh[i][b];
 			}
 
 		}
@@ -117,7 +132,16 @@ void problem_create(struct problem *P, struct graph *G) {
 	P->G = G;
 
 	P->h = (double*) calloc(dim, sizeof(double));
+	check_malloc(P->h, "cannot allocate P->h");
+
 	P->J = (double*) calloc(dim * dim, sizeof(double));
+	check_malloc(P->J, "cannot allocate P->J");
+
+	P->z = (double*) malloc(P->G->nnodes * sizeof(double));
+	check_malloc(P->J, "cannot allocate P->z");
+
+	P->e = (double*) malloc(P->G->nnodes * dim * sizeof(double));
+	check_malloc(P->e, "cannot allocate P->e");
 
 	P->T = 1.0;
 
@@ -129,10 +153,12 @@ void problem_free(struct problem *P) {
 
 	free(P->h);
 	free(P->J);
+	free(P->z);
+	free(P->e);
 
 }
 
-void problem_read(struct problem *P, char *name) {
+void checkpoint_read(struct problem *P, char *name) {
 
 	FILE *F = fopen(name, "r");
 	if (F == NULL) {
@@ -159,14 +185,13 @@ void problem_read(struct problem *P, char *name) {
 		for (int j = 0; j < dim; j++) {
 			fscanf(F, "%lf", J++);
 		}
-
 	}
 
 	fclose(F);
 
 }
 
-void minimize(struct problem *P, int niter) {
+void minimize(struct problem *P, int niter, char *chk) {
 
 	struct graph *G = P->G;
 	unsigned char dim = G->dim;
@@ -175,9 +200,31 @@ void minimize(struct problem *P, int niter) {
 
 	printf("# %-8s%-14s%-14s%-14s%-8s%-12s\n", "iter", "f(x)", "||x||", "||g||",
 			"neval", "epsilon");
-	printf("# %-8d%-12.5e\n", 0, f(G, x));
+	printf("# %-8d%-12.5e\n", 0, f(P, x));
+
+	assert(sizeof(double) == sizeof(lbfgsfloatval_t)); /* sse2 disabled */
+
+	int size = dim * dim + dim;
+
+	lbfgsfloatval_t fx;
+	lbfgsfloatval_t *m_x = lbfgs_malloc(size);
+	check_malloc(m_x, "cannot allocate m_x");
+
+	/* init the variables */
+	memset(m_x, 0, size * sizeof(lbfgsfloatval_t));
+
+	lbfgs_parameter_t param;
+	lbfgs_parameter_init(&param);
+	param.max_iterations = niter;
+//	param.epsilon = 1e-3;
+//	param.m = 3;
+//	param.max_linesearch = 3;
+//	param.ftol = 0.5;
+
+	lbfgs(size, m_x, &fx, _evaluate, _progress, P, &param);
 
 	free(x);
+	free(m_x);
 
 }
 
@@ -191,5 +238,15 @@ int _progress(void *instance, const lbfgsfloatval_t *x,
 	fflush(stdout);
 
 	return 0;
+
+}
+
+lbfgsfloatval_t _evaluate(void *instance, const lbfgsfloatval_t *x,
+		lbfgsfloatval_t *g, const int n, const lbfgsfloatval_t step) {
+
+	struct problem *P = (struct problem*) instance;
+	lbfgsfloatval_t f;
+	fdf(P, x, &f, g);
+	return f;
 
 }
