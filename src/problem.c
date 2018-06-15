@@ -14,7 +14,7 @@
 #include "problem.h"
 #include "common.h"
 
-double E(unsigned char *neigh, unsigned char dim, const double *x, double *e) {
+double E(unsigned char *neigh, unsigned char dim, const double *x, double *e, double T) {
 
 	double z = 0.0;
 
@@ -31,7 +31,7 @@ double E(unsigned char *neigh, unsigned char dim, const double *x, double *e) {
 			e[j] += *(xptr++) * neigh[k];
 		}
 
-		e[j] = exp(-e[j]);
+		e[j] = exp(-e[j] / T);
 		z += e[j];
 
 	}
@@ -48,13 +48,13 @@ double f(struct problem *P, const double *x) {
 	unsigned char DIM = G->dim;
 
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic) reduction(+:lp)
+#pragma omp parallel for reduction(+:lp)
 #endif
 	for (long i = 0; i < G->nnodes; i++) {
 
 		double z, e[DIM];
 
-		z = E(G->neigh[i], DIM, x, e);
+		z = E(G->neigh[i], DIM, x, e, P->T);
 		lp += -log(e[G->type[i]] * z);
 
 	}
@@ -74,14 +74,14 @@ void fdf(struct problem *P, const double *x, double *f, double *g) {
 	memset(g, 0, SIZE * sizeof(double));
 
 #if defined(_OPENMP)
-#pragma omp parallel for reduction(+:lp,g[:SIZE]) schedule(static)
+#pragma omp parallel for reduction(+:lp,g[:SIZE])
 #endif
 	for (long i = 0; i < G->nnodes; i++) {
 
 
 		/* pre-compute local energies for every node */
 		double *e = P->e + i * DIM;
-		P->z[i] = E(G->neigh[i], DIM, x, e);
+		P->z[i] = E(G->neigh[i], DIM, x, e, P->T);
 		lp += -log(e[G->type[i]] * P->z[i]);
 
 		for (unsigned char a = 0; a < DIM; a++) {
