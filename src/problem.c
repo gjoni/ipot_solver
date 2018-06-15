@@ -69,43 +69,35 @@ void fdf(struct problem *P, const double *x, double *f, double *g) {
 
 	struct graph *G = P->G;
 	unsigned char DIM = G->dim;
+	int SIZE = DIM + DIM * DIM;
 
-	memset(g, 0, (DIM + 1) * DIM * sizeof(double));
+	memset(g, 0, SIZE * sizeof(double));
 
-	/* pre-compute local energies for every node */
-//	 reduction(+:g[:DIM])
 #if defined(_OPENMP)
-#pragma omp parallel for reduction(+:lp) reduction(+:g[:DIM])
+#pragma omp parallel for reduction(+:lp,g[:SIZE]) schedule(static)
 #endif
 	for (long i = 0; i < G->nnodes; i++) {
 
+
+		/* pre-compute local energies for every node */
 		double *e = P->e + i * DIM;
 		P->z[i] = E(G->neigh[i], DIM, x, e);
 		lp += -log(e[G->type[i]] * P->z[i]);
 
 		for (unsigned char a = 0; a < DIM; a++) {
 			e[a] = -e[a] * P->z[i] + 1.0 * (G->type[i] == a);
-
-			/* derivatives of local fields */
-			g[a] += e[a];
 		}
 
-	}
+		/* derivatives */
+		for (int a = 0; a < DIM; a++) {
 
-	/* derivatives of couplings */
-//	int SIZE = DIM + DIM * DIM;
-//#if defined(_OPENMP)
-//#pragma omp parallel for reduction(+:g[:SIZE])
-//#endif
-	for (long i = 0; i < G->nnodes; i++) {
+			/* local fields */
+			g[a] += e[a];
 
-		double *e = P->e + i * DIM;
-
-		for (unsigned char a = 0; a < DIM; a++) {
+			/* couplings */
 			for (unsigned char b = 0; b < DIM; b++) {
 				g[DIM * (a + 1) + b] += e[a] * G->neigh[i][b];
 			}
-
 		}
 
 	}
@@ -216,10 +208,6 @@ void minimize(struct problem *P, int niter, char *chk) {
 	lbfgs_parameter_t param;
 	lbfgs_parameter_init(&param);
 	param.max_iterations = niter;
-//	param.epsilon = 1e-3;
-//	param.m = 3;
-//	param.max_linesearch = 3;
-//	param.ftol = 0.5;
 
 	lbfgs(size, m_x, &fx, _evaluate, _progress, P, &param);
 
@@ -250,3 +238,4 @@ lbfgsfloatval_t _evaluate(void *instance, const lbfgsfloatval_t *x,
 	return f;
 
 }
+

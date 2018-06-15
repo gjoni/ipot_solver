@@ -36,6 +36,8 @@ int main(int argc, char *argv[]) {
 	problem_create(&P, &G);
 	P.T = myargs.temp;
 	P.iter = 0;
+	printf("# %20s : %d/%d\n", "start/stop iteration", P.iter, myargs.niter);
+	printf("# %20s : %.2f\n", "temperature", P.T);
 
 	/* (3) read checkpoint, if any */
 	if (myargs.chk != NULL) {
