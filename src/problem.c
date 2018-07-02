@@ -85,7 +85,7 @@ void fdf(struct problem *P, const double *x, double *f, double *g) {
 		lp += -log(e[G->type[i]] * P->z[i]);
 
 		for (unsigned char a = 0; a < DIM; a++) {
-			e[a] = -e[a] * P->z[i] + 1.0 * (G->type[i] == a);
+			e[a] = (-e[a] * P->z[i] + 1.0 * (G->type[i] == a)) / P->T;
 		}
 
 		/* derivatives */
@@ -210,6 +210,14 @@ void minimize(struct problem *P, int niter, char *chk) {
 	param.max_iterations = niter;
 
 	lbfgs(size, m_x, &fx, _evaluate, _progress, P, &param);
+
+	double *J = P->J;
+	for (int i = 0; i < dim; i++) {
+		P->h[i] = m_x[i];
+		for (int j = 0; j < dim; j++)  {
+			*(J++) = m_x[dim + i * dim + j];
+		}
+	}
 
 	free(x);
 	free(m_x);

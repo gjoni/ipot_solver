@@ -47,6 +47,24 @@ int main(int argc, char *argv[]) {
 	/* (4) minimize */
 	minimize(&P, myargs.niter, myargs.chk);
 
+	/* (5) zero-sum gauge */
+	double avg = 0.0;
+	double *J = P.J;
+	for (int i = 0; i < P.G->dim; i++) {
+		for (int j = 0; j < P.G->dim; j++) {
+			avg += *(J++);
+		}
+	}
+	avg /= (P.G->dim * P.G->dim);
+	J = P.J;
+	for (int i = 0; i < P.G->dim; i++) {
+		printf("T%d %13.5e", i, P.h[i]);
+		for (int j = 0; j < P.G->dim; j++) {
+			printf(" %13.5e", *(J++) - avg);
+		}
+		printf("\n");
+	}
+
 	/* (9) free */
 	problem_free(&P);
 	graph_free(&G);
