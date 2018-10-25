@@ -20,6 +20,14 @@ Options:  -i input.txt                   - input, required
           -t number of threads             1
 ```
 
+##### Example:
+```
+gunzip example/graph.txt.gz
+./ipot_solver -i example/graph.txt -t 4 -n 50 -o table.out
+```
+
+![example image](https://raw.githubusercontent.com/gjoni/ipot_solver/master/example/example.png | width=800)
+
 ## Links
 
  - [iPot](https://github.com/gjoni/iPot) statistical contact potential
