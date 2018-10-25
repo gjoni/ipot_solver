@@ -14,6 +14,5 @@ TODO:
 
 ## Links
 
- - [**iPot** statistical contact potential](https://github.com/gjoni/iPot)
- - [Vakser Lab](http://vakser.compbio.ku.edu/main/)
- 
+ - [**iPot**](https://github.com/gjoni/iPot) statistical contact potential
+ - [libLBFGS](https://github.com/chokkan/liblbfgs): a library of Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS)
