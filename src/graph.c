@@ -73,6 +73,7 @@ void graph_read(char *name, struct graph *g) {
 
 	long nnodes = 1;
 	while (fgets(buf, SIZE, F)) {
+		/* skip emty lines */
 		if (buf[0] != '\n' && buf[0] != ' ') {
 			nnodes++;
 		}
@@ -100,9 +101,9 @@ void graph_read(char *name, struct graph *g) {
 
 	printf("# %20s : %d x %ld\n", "ntypes x nnodes", dim, nnodes);
 	printf("# %20s : %.1fmb\n", "graph size",
-			1.0 * (dim + 1) * nnodes / 1024.0 / 1024.0);
+			sizeof(unsigned char) * (dim + 1) * nnodes / 1024.0 / 1024.0);
 	printf("# %20s : %.1fmb\n", "temp variables size",
-			8.0 * (dim + 1) * nnodes / 1024.0 / 1024.0);
+			sizeof(double) * (dim + 1) * nnodes / 1024.0 / 1024.0);
 
 	fclose(F);
 

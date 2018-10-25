@@ -11,4 +11,3 @@ TODO:
 * README with examples
 * (+) add License (MIT?)
 * add (pseudo)Fisher matrix
-* allow for different 1-body and 2-body sets of states

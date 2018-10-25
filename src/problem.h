@@ -11,28 +11,24 @@
 #include "graph.h"
 #include "lbfgs.h"
 
-
-/* TODO:
- * + 1) include temp variables and allocate memory only once
- *   2) change *J to **J
- *   3) ??? smth about objective function ??? */
-
 struct problem {
 	struct graph *G;
 	double *h;
 	double *J;
-//	double **J;
 	double *z;
 	double *e;
-	double T;
+	int iter0;
 	int iter;
+	int niter;
+	char *chk;
+
 };
 
 void problem_create(struct problem *P, struct graph *G);
 void problem_free(struct problem *P);
 
-void checkpoint_read(struct problem *P, char *name);
-void checkpoint_write(struct problem *P, char *name);
+int checkpoint_read(struct problem *P);
+void checkpoint_write(struct problem *P);
 
 double f(struct problem *P, const double *x);
 void fdf(struct problem *P, const double *x, double *f, double *g);
@@ -44,6 +40,8 @@ int _progress(void *instance, const lbfgsfloatval_t *x,
 		const lbfgsfloatval_t *g, const lbfgsfloatval_t fx,
 		const lbfgsfloatval_t xnorm, const lbfgsfloatval_t gnorm,
 		const lbfgsfloatval_t step, int n, int k, int ls);
+
+int _update_problem(struct problem *P, const lbfgsfloatval_t *x, int iter);
 
 void minimize(struct problem *P, int niter, char *chk);
 

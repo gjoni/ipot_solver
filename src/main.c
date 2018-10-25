@@ -16,7 +16,7 @@
 int main(int argc, char *argv[]) {
 
 	/* (0) read command line arguments */
-	struct args myargs = { NULL, NULL, NULL, 1.0, 100, 1 };
+	struct args myargs = { NULL, NULL, NULL, 100, 1 };
 	if (!get_args(argc, argv, &myargs)) {
 		print_args(&myargs);
 		return 1;
@@ -34,20 +34,31 @@ int main(int argc, char *argv[]) {
 	/* (2) set up the problem */
 	struct problem P;
 	problem_create(&P, &G);
-	P.T = myargs.temp;
-	P.iter = 0;
-	printf("# %20s : %d/%d\n", "start/stop iteration", P.iter, myargs.niter);
-	printf("# %20s : %.2f\n", "temperature", P.T);
+	P.chk = myargs.chk;
+	P.niter = myargs.niter;
 
 	/* (3) read checkpoint, if any */
-	if (myargs.chk != NULL) {
-		checkpoint_read(&P, myargs.chk);
+	if (P.chk != NULL) {
+		if (checkpoint_read(&P)) {
+			checkpoint_write(&P);
+		}
+	}
+	printf("# %20s : %d/%d\n", "start/stop iteration", P.iter0, P.niter);
+
+	if (P.iter0 >= P.niter) {
+		printf("# Max. number of iterations reached\n");
+		printf("# No minimization will be performed\n");
+		problem_free(&P);
+		graph_free(&G);
+		return 0;
 	}
 
 	/* (4) minimize */
 	minimize(&P, myargs.niter, myargs.chk);
+	printf("# Done\n");
 
 	/* (5) zero-sum gauge */
+	/*
 	double avg = 0.0;
 	double *J = P.J;
 	for (int i = 0; i < P.G->dim; i++) {
@@ -63,6 +74,13 @@ int main(int argc, char *argv[]) {
 			printf(" %13.5e", *(J++) - avg);
 		}
 		printf("\n");
+	}
+	*/
+	
+	/* (6) save table */
+	if (myargs.out != NULL) {
+		P.chk = myargs.out;
+		checkpoint_write(&P);
 	}
 
 	/* (9) free */

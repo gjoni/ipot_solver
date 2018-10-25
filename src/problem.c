@@ -14,7 +14,7 @@
 #include "problem.h"
 #include "common.h"
 
-double E(unsigned char *neigh, unsigned char dim, const double *x, double *e, double T) {
+double E(unsigned char *neigh, unsigned char dim, const double *x, double *e) {
 
 	double z = 0.0;
 
@@ -31,7 +31,7 @@ double E(unsigned char *neigh, unsigned char dim, const double *x, double *e, do
 			e[j] += *(xptr++) * neigh[k];
 		}
 
-		e[j] = exp(-e[j] / T);
+		e[j] = exp(-e[j]);
 		z += e[j];
 
 	}
@@ -54,7 +54,7 @@ double f(struct problem *P, const double *x) {
 
 		double z, e[DIM];
 
-		z = E(G->neigh[i], DIM, x, e, P->T);
+		z = E(G->neigh[i], DIM, x, e);
 		lp += -log(e[G->type[i]] * z);
 
 	}
@@ -81,11 +81,11 @@ void fdf(struct problem *P, const double *x, double *f, double *g) {
 
 		/* pre-compute local energies for every node */
 		double *e = P->e + i * DIM;
-		P->z[i] = E(G->neigh[i], DIM, x, e, P->T);
+		P->z[i] = E(G->neigh[i], DIM, x, e);
 		lp += -log(e[G->type[i]] * P->z[i]);
 
 		for (unsigned char a = 0; a < DIM; a++) {
-			e[a] = (-e[a] * P->z[i] + 1.0 * (G->type[i] == a)) / P->T;
+			e[a] = (-e[a] * P->z[i] + 1.0 * (G->type[i] == a));
 		}
 
 		/* derivatives */
@@ -134,8 +134,12 @@ void problem_create(struct problem *P, struct graph *G) {
 
 	P->e = (double*) malloc(P->G->nnodes * dim * sizeof(double));
 	check_malloc(P->e, "cannot allocate P->e");
+	
+	P->iter0 = 0;
+	P->iter = 0;
+	P->niter = 0;
 
-	P->T = 1.0;
+	P->chk = NULL;
 
 }
 
@@ -150,24 +154,46 @@ void problem_free(struct problem *P) {
 
 }
 
-void checkpoint_read(struct problem *P, char *name) {
-
-	FILE *F = fopen(name, "r");
+void checkpoint_write(struct problem *P) {
+	
+	FILE *F = fopen(P->chk, "w");
 	if (F == NULL) {
-		fprintf(stderr, "Error: cannot open '%s' file for reading\n", name);
+		fprintf(stderr, "Error: cannot open '%s' file for writing\n", P->chk);
 		exit(1);
 	}
 
+	fprintf(F, "# %d %d\n", P->G->dim, P->iter);
+
+	double *J = P->J;
+	for (int i = 0; i < P->G->dim; i++) {
+		fprintf(F, "%.10lf", P->h[i]);
+		for (int j = 0; j < P->G->dim; j++) {
+			fprintf(F, " %.10lf", *(J++));
+		}
+		fprintf(F, "\n");
+	}
+
+	fclose(F);
+
+}
+
+int checkpoint_read(struct problem *P) {
+
+	FILE *F = fopen(P->chk, "r");
+	if (F == NULL) {
+		return 1;
+	}
+
 	int dim;
-	if (fscanf(F, "# %d %lf %d\n", &dim, &(P->T), &(P->iter)) != 3) {
-		fprintf(stderr, "Error: misformatted checkpoint file '%s'\n", name);
+	if (fscanf(F, "# %d %d\n", &dim, &(P->iter0)) != 2) {
+		fprintf(stderr, "Error: misformatted checkpoint file '%s'\n", P->chk);
 		exit(1);
 	}
 
 	if (dim != P->G->dim) {
 		fprintf(stderr,
-				"Error: mismatched dimension in the checkpoint file '%s' (%d != %d)\n",
-				name, dim, P->G->dim);
+				"Error: dimension in the checkpoint file '%s' do not match dimension in the Graph (%d != %d)\n",
+				P->chk, dim, P->G->dim);
 		exit(1);
 	}
 
@@ -181,6 +207,23 @@ void checkpoint_read(struct problem *P, char *name) {
 
 	fclose(F);
 
+	return 0;
+
+}
+
+int _update_problem(struct problem *P, const lbfgsfloatval_t *x, int iter) {
+
+	P->iter = iter + P->iter0;
+	double *J = P->J;
+	for (int i = 0; i < P->G->dim; i++) {
+		P->h[i] = x[i];
+		for (int j = 0; j < P->G->dim; j++)  {
+			*(J++) = x[P->G->dim + i * P->G->dim + j];
+		}
+	}
+
+	return iter;
+
 }
 
 void minimize(struct problem *P, int niter, char *chk) {
@@ -192,7 +235,7 @@ void minimize(struct problem *P, int niter, char *chk) {
 
 	printf("# %-8s%-14s%-14s%-14s%-8s%-12s\n", "iter", "f(x)", "||x||", "||g||",
 			"neval", "epsilon");
-	printf("# %-8d%-12.5e\n", 0, f(P, x));
+	//printf("# %-8d%-12.5e\n", 0, f(P, x));
 
 	assert(sizeof(double) == sizeof(lbfgsfloatval_t)); /* sse2 disabled */
 
@@ -202,22 +245,22 @@ void minimize(struct problem *P, int niter, char *chk) {
 	lbfgsfloatval_t *m_x = lbfgs_malloc(size);
 	check_malloc(m_x, "cannot allocate m_x");
 
-	/* init the variables */
-	memset(m_x, 0, size * sizeof(lbfgsfloatval_t));
+	/* init x[] with P->h[] and P->J[] */
+	{
+		double *J = P->J;
+		for (int i = 0; i < P->G->dim; i++) {
+			m_x[i] = P->h[i];
+			for (int j = 0; j < P->G->dim; j++)  {
+				m_x[P->G->dim + i * P->G->dim + j] = *(J++);
+			}
+		}
+	}
 
 	lbfgs_parameter_t param;
 	lbfgs_parameter_init(&param);
 	param.max_iterations = niter;
 
 	lbfgs(size, m_x, &fx, _evaluate, _progress, P, &param);
-
-	double *J = P->J;
-	for (int i = 0; i < dim; i++) {
-		P->h[i] = m_x[i];
-		for (int j = 0; j < dim; j++)  {
-			*(J++) = m_x[dim + i * dim + j];
-		}
-	}
 
 	free(x);
 	free(m_x);
@@ -229,10 +272,22 @@ int _progress(void *instance, const lbfgsfloatval_t *x,
 		const lbfgsfloatval_t xnorm, const lbfgsfloatval_t gnorm,
 		const lbfgsfloatval_t step, int n, int k, int ls) {
 
-	printf("# %-8d%-12.5e  %-12.5e  %-12.5e  %-6d  %-10.5f\n", k, fx, xnorm,
-			gnorm, ls, gnorm / xnorm);
+	struct problem *P = (struct problem*) instance;
+
+	printf("# %-8d%-12.5e  %-12.5e  %-12.5e  %-6d  %-10.5f\n", 
+			k + P->iter0, fx, xnorm, gnorm, ls, gnorm / xnorm);
 	fflush(stdout);
 
+	_update_problem(P, x, k);
+
+	if (P->chk != NULL) {
+		checkpoint_write(P);
+	}
+	
+	if (P->iter >= P->niter) {
+		return 1;
+	}
+	
 	return 0;
 
 }
@@ -243,6 +298,7 @@ lbfgsfloatval_t _evaluate(void *instance, const lbfgsfloatval_t *x,
 	struct problem *P = (struct problem*) instance;
 	lbfgsfloatval_t f;
 	fdf(P, x, &f, g);
+	
 	return f;
 
 }
