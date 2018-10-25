@@ -20,8 +20,8 @@ Options:  -i input.txt                   - input, required
           -t number of threads             1
 ```
 
-##### Example
-Learn energies for the AACE18 statistical contact potential:
+### Example
+Learn energy parameters for the AACE18 statistical contact potential:
 ```
 gunzip example/graph.txt.gz
 ./ipot_solver -i example/graph.txt -t 4 -n 20 -o table.out
