@@ -22,7 +22,7 @@ Options:  -i input.txt                   - input, required
 
 ## Links
 
- - [**iPot**](https://github.com/gjoni/iPot) statistical contact potential
+ - [iPot](https://github.com/gjoni/iPot) statistical contact potential
  - [libLBFGS](https://github.com/chokkan/liblbfgs): a library of Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS)
 
 ## References
