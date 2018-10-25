@@ -11,3 +11,9 @@ TODO:
 * README with examples
 * (+) add License (MIT?)
 * add (pseudo)Fisher matrix
+
+## Links
+
+ - [**iPot** statistical contact potential](https://github.com/gjoni/iPot)
+ - [Vakser Lab](http://vakser.compbio.ku.edu/main/)
+ 
