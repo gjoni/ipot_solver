@@ -26,7 +26,7 @@ gunzip example/graph.txt.gz
 ./ipot_solver -i example/graph.txt -t 4 -n 50 -o table.out
 ```
 
-![example image](https://raw.githubusercontent.com/gjoni/ipot_solver/master/example/example.png | width=800)
+![example image](example/example.png)
 
 ## Links
 
